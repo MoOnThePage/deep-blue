@@ -1,12 +1,13 @@
+import audioPlayer.PlaylistPlayer
 import org.openrndr.Fullscreen
 import org.openrndr.KEY_ESCAPE
 import org.openrndr.application
 import org.openrndr.color.ColorRGBa
-import org.openrndr.draw.BufferMultisample
 import org.openrndr.extensions.Screenshots
-import org.openrndr.ffmpeg.ScreenRecorder
-import org.openrndr.ffmpeg.h264
 import kotlin.math.*
+
+
+
 
 // ============================================
 // MAIN APPLICATION
@@ -21,6 +22,11 @@ fun main() = application {
     }
 
     program {
+        // Initialize playlist player and scan the folder
+        val playlistPlayer = PlaylistPlayer(this)
+        playlistPlayer.loadDirectory("data/audio/")
+
+
         var t = 0.0
         val pointCount = 20000
 
@@ -44,6 +50,7 @@ fun main() = application {
             }
         }
 
+        // TODO
 //        extend(ScreenRecorder()) {
 //            maximumDuration = 26.0 // stops recording after 26 seconds
 //            frameRate = 60.0
@@ -56,6 +63,9 @@ fun main() = application {
             key = "s"
         }
         extend {
+            // Keep playlist queue updated every frame
+            playlistPlayer.update()
+
             val cx = width / 2.0
             val cy = height / 2.0
 
@@ -87,6 +97,11 @@ fun main() = application {
                     // Add point to batch
                     point(x, yCoord)
                 }
+            }
+
+            // Clean Up
+            ended.listen {
+                playlistPlayer.stop()
             }
         }
     }

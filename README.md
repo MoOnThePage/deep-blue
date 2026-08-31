@@ -13,11 +13,43 @@ take it further by creating an application that can be used to enjoy the beautif
 I have no idea what I'm doing, I have no future planes for it, but I would like to see where it 
 will lead me.
 
-For Now the application opens and runs in fuller screen mode, you can switch between colors 
-using keyboard numbers 1–6, and to exit the application, press ESC.
+For Now the application opens and runs in fullscreen mode, it scans music files in a directory 
+and loads them into a playlist, you can switch between colors using keyboard numbers 1–6, 
+and to exit the application, press ESC.
 
-What does the application serve? 
+## What does the application serve? 
 Just having fun and enjoying the beautiful visuals, turn your laptop into a Deep Blue 😄.
 
-## TODO:
-- [ ] Add background music to play when the application starts.
+## Features:
+- 100% Kotlin
+- OPENRNDR
+- Play music from a directory 
+  - mp3 (Tested)
+  - wav (Not tested)
+  - ogg (not tested)
+
+## To Do:
+- Add controls for the background music play, pause, stop, next and previous songs.
+- Read 
+  - https://github.com/ddf/Minim/tree/main/examples/AudioPlayer/loopNum
+  - https://github.com/ddf/Minim/tree/main/examples/AudioPlayer/pause
+  - https://github.com/ddf/Minim/tree/main/examples/AudioPlayer/rewind
+  - https://github.com/ddf/Minim/tree/main/examples/AudioPlayer/setLoopPoints
+  - https://github.com/ddf/Minim/tree/main/examples/AudioPlayer/skip
+
+## Working On:
+- 
+
+## Done:
+- Add background music to play when the application starts.
+
+## Summary of Work Done:
+Add the ability to play background music. The application now scans a folder for the music in it, 
+creates a playlist and plays the tracks one after another, and keeps playing until the playlist is 
+finished, then repeats the playlist in a loop.
+
+> **Note:** The repository has three tracks from [pixabay](https://pixabay.com/) intended for testing purposes, 
+> not for distribution or sharing. This will change in the future.
+> - [Underwater Dreamscape](https://pixabay.com/music/ambient-underwater-dreamscape-537486/)
+> - [Nostalgia](https://pixabay.com/music/nostalgia-nostalgia-591320/)
+> - [Intro](https://pixabay.com/music/beats-intro-591323/)
