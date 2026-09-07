@@ -1,32 +1,48 @@
-# Deep Blue
+Deep Blue
+=========
 
-Is a creative coding project inspired by [@yuruyurau](https://x.com/yuruyurau?lang=en) on X. 
-The original author only posts on something called "つぶやきProcessing" 
+Is a creative coding project inspired by [@yuruyurau](https://x.com/yuruyurau?lang=en) on X.
+The original author only posts on something called "つぶやきProcessing"
 (tsubuyaki/"tweet-sized Processing") genre of creative coding. I tried so much to look
 for the math behind the work and understand it, but I couldn't.
 
 So I had to use a branch of AI models to help me understand the math behind the work and
 recreate it in Kotlin using OPENRNDR. And after a couple of tralies and errors, I finally
-managed to recreate the work. But I was not satisfied with the result, so I decided to 
+managed to recreate the work. But I was not satisfied with the result, so I decided to
 take it further by creating an application that can be used to enjoy the beautiful visuals.
 
-I have no idea what I'm doing, I have no future planes for it, but I would like to see where it 
+I have no idea what I'm doing, I have no future planes for it, but I would like to see where it
 will lead me.
 
-For Now the application opens and runs in fullscreen mode, it scans music files in a directory 
-and loads them into a playlist, you can switch between colors using keyboard numbers 1–6, 
+For Now the application opens and runs in fullscreen mode, it scans music files in a directory
+and loads them into a playlist, you can switch between colors using keyboard numbers 1–6,
 and to exit the application, press ESC.
 
-## What does the application serve? 
-Just having fun and enjoying the beautiful visuals, turn your laptop into a Deep Blue 😄.
+Features
+--------
 
-## Features:
 - 100% Kotlin
 - OPENRNDR
-- Play music from a directory 
+- Play music from a directory
   - mp3 (Tested)
   - wav (Not tested)
   - ogg (not tested)
+
+Installation
+------------
+
+Install instruction will be added later.
+
+License
+-------
+
+The project is licensed under the MIT license.
+
+
+---
+
+Project Development Road MAP
+-------
 
 ## To Do:
 - Add controls for the background music play, pause, stop, next and previous songs.
@@ -43,10 +59,6 @@ Just having fun and enjoying the beautiful visuals, turn your laptop into a Deep
 ## Done:
 - Add background music to play when the application starts.
 
-## Summary of Work Done:
-Add the ability to play background music. The application now scans a folder for the music in it, 
-creates a playlist and plays the tracks one after another, and keeps playing until the playlist is 
-finished, then repeats the playlist in a loop.
 
 > **Note:** The repository has three tracks from [pixabay](https://pixabay.com/) intended for testing purposes, 
 > not for distribution or sharing. This will change in the future.
