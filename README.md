@@ -27,6 +27,8 @@ Features
   - mp3 (Tested)
   - wav (Not tested)
   - ogg (not tested)
+- GUI for Control
+- Change music between next and previous tracks
 
 Installation
 ------------
@@ -45,7 +47,7 @@ Project Development Road MAP
 -------
 
 ## To Do:
-- Add controls for the background music play, pause, stop, next and previous songs.
+- Add controls for the background music play, pause, stop.
 - Read 
   - https://github.com/ddf/Minim/tree/main/examples/AudioPlayer/loopNum
   - https://github.com/ddf/Minim/tree/main/examples/AudioPlayer/pause
@@ -58,7 +60,9 @@ Project Development Road MAP
 
 ## Done:
 - Add background music to play when the application starts.
-
+- Add control for switching between tracks
+- Add control for changing the background color
+- Add control for controlling the visuals
 
 > **Note:** The repository has three tracks from [pixabay](https://pixabay.com/) intended for testing purposes, 
 > not for distribution or sharing. This will change in the future.

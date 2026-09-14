@@ -6,12 +6,15 @@ import org.openrndr.Program
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
+import kotlin.math.sqrt
 
 // Play List of audio files
-class PlaylistPlayer(private val program: Program) {
+class PlaylistPlayer {
     private val minim: Minim = Minim(object {
+        @Suppress("unused")
         fun sketchPath(fileName: String): String = File(fileName).absolutePath
 
+        @Suppress("unused")
         fun createInput(fileName: String): InputStream? {
             val file = File(fileName)
             if (file.exists()) return FileInputStream(file)
@@ -78,11 +81,12 @@ class PlaylistPlayer(private val program: Program) {
         playTrack(currentTrackIndex)
     }
 
-    // Load an audio to play
+    // Load an audio to play: next
     fun loadFile(path: String, bufferSize: Int = 2048) {
         player = minim.loadFile(path, bufferSize)
     }
 
+    // load an audio to play: previous
     fun previousTrack() {
         if (playlist.isEmpty()) return
         currentTrackIndex = if (currentTrackIndex - 1 < 0) playlist.size - 1 else currentTrackIndex - 1
@@ -93,5 +97,24 @@ class PlaylistPlayer(private val program: Program) {
     fun stop() {
         player?.close()
         minim.stop()
+    }
+
+    // TODO: Experiment thing
+    // real time audio analysis
+    fun getVolume(): Double {
+        val p = player ?: return 0.0
+        var sum = 0.0
+        val bufferSize = p.bufferSize()
+        for (i in 0 until bufferSize) {
+            val sample = p.mix.get(i)
+            sum += sample * sample
+        }
+        return sqrt(sum / bufferSize).toDouble()
+    }
+
+    fun getSampleAt(normalizedIndex: Double): Double {
+        val p = player ?: return 0.0
+        val idx = (normalizedIndex.coerceIn(0.0, 1.0) * (p.bufferSize() - 1)).toInt()
+        return p.mix.get(idx).toDouble()
     }
 }
