@@ -1,33 +1,46 @@
+import gui.boolControl
+import gui.doubleControl
+import gui.intControl
 import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.Drawer
-import org.openrndr.extra.parameters.BooleanParameter
-import org.openrndr.extra.parameters.DoubleParameter
-import org.openrndr.extra.parameters.IntParameter
+import org.openrndr.panel.elements.Element
+import org.openrndr.panel.elements.div
 import kotlin.math.*
 
-abstract class Visual {
-    @BooleanParameter("Enabled")
+abstract class Visual(val name: String) {
     var enabled: Boolean = false
 
     abstract fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double)
+
+    /** Override to add this visual's own sliders/toggles. */
+    open fun Element.controls() {}
+
+    /** Called once from main: one toggle (named after the visual) + its controls. */
+    fun buildPanel(parent: Element) {
+        parent.div("visual") {
+            boolControl(name, this@Visual::enabled)
+            controls()
+        }
+    }
 }
 
-class FishFieldVisual : Visual() {
-    @IntParameter("Number of Fish", 1, 10)
-    var fishCount: Int = 3
+class FishFieldVisual : Visual("Fish Field") {
+    var fishCount = 3
+    var fishSpread = 0.0
+    var fishScale = 1.0
+    var pointCount = 20000
 
-    @DoubleParameter("Fish Spread", 0.0, 400.0)
-    var fishSpread: Double = 0.0
-
-    @DoubleParameter("Fish Scale", 0.2, 2.0)
-    var fishScale: Double = 1.0
-
-    @IntParameter("Point Count", 1000, 50000)
-    var pointCount: Int = 20000
+    override fun Element.controls() {
+        intControl("Fish count", 1, 10, ::fishCount)
+        doubleControl("Fish spread", 0.0, 400.0, ::fishSpread, 0)
+        doubleControl("Fish scale", 0.2, 2.0, ::fishScale)
+        intControl("Points", 1000, 50000, ::pointCount)
+    }
 
     override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
-        val fishAngleStep = 2 * PI / fishCount
-        val fishCenters = (0 until fishCount).map { layer ->
+        val count = fishCount.coerceAtLeast(1)
+        val fishAngleStep = 2 * PI / count
+        val fishCenters = (0 until count).map { layer ->
             val angle = fishAngleStep * layer
             Pair(cx + cos(angle) * fishSpread, cy + sin(angle) * fishSpread)
         }
@@ -42,7 +55,7 @@ class FishFieldVisual : Visual() {
                 val q = (k * 2.0 + 49.0 + cos(19.0 / safeK) +
                         k * cos(y / 2.0) * (1.0 + sin(o * 4.0 - e * 2.0 - t))) * fishScale
 
-                val layer = i % fishCount
+                val layer = i % count
                 val (fishCx, fishCy) = fishCenters[layer]
                 val c = o / 1.5 - e / 5.0 - t / 8.0 + layer * 8.0
 
@@ -56,9 +69,12 @@ class FishFieldVisual : Visual() {
     }
 }
 
-class DisplacementGridVisual : Visual() {
-    @IntParameter("Point Count", 1000, 100000)
-    var pointCount: Int = 40000
+class DisplacementGridVisual : Visual("Displacement Grid") {
+    var pointCount = 40000
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 100000, ::pointCount)
+    }
 
     override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
         drawer.points {
@@ -77,16 +93,18 @@ class DisplacementGridVisual : Visual() {
                 val gray = ((d * sin(k) * sin(t * 4.0 + e)).pow(2) * 400.0)
                     .coerceIn(0.0, 255.0) / 255.0
                 fill = ColorRGBa(gray, gray, gray, 36.0 / 255.0)
-
                 point(px, py)
             }
         }
     }
 }
 
-class WaveRippleVisual : Visual() {
-    @IntParameter("Point Count", 1000, 50000)
-    var pointCount: Int = 40000
+class WaveRippleVisual : Visual("Wave Ripple") {
+    var pointCount = 40000
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+    }
 
     override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
         drawer.points {
@@ -105,6 +123,40 @@ class WaveRippleVisual : Visual() {
                 val py = (q + y / 2.0 - d * 19.0) * 0.7 * sin(c) + cy - 200.0
 
                 fill = ColorRGBa(1.0, 1.0, 1.0, 36.0 / 255.0)
+                point(px, py)
+            }
+        }
+    }
+}
+
+class HypotWaves : Visual("Hypo tWaves") {
+
+    // 1. add a plain `var` for every knob you want tunable
+    var pointCount = 10000
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+    }
+
+    override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
+        drawer.points {
+            for (i in pointCount downTo 1) {
+                val x = i.toDouble()
+                val y = i.toDouble() / 235.0
+
+                val k = (4.0 + cos(x / 9.0 - t)) * cos(x / 30.0)
+                val e = y / 7.0 - 13.0
+
+                val d = hypot(k, e) + sin(y / 99.0 + t / 2.0) - 4.0
+                val c = d - t
+
+                val q = 3.0 * sin(k * 2.0) + sin(y / 29.0) * k * (9.0 + 2.0 * sin(cos(e) * 9.0 - d * 4.0 + t))
+
+                // Adjusting center offset from hardcoded 200 to use cx/cy template variables
+                val px = q + 40.0 * cos(c) + cx - 200.0
+                val py = q * sin(c) + d * 35.0 + cy - 200.0
+
+                fill = ColorRGBa(1.0, 1.0, 1.0, 96.0 / 255.0)
                 point(px, py)
             }
         }

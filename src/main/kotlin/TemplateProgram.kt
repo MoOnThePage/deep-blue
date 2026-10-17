@@ -1,57 +1,104 @@
 import audioPlayer.PlaylistPlayer
+import gui.doubleControl
 import org.openrndr.Fullscreen
 import org.openrndr.KEY_ESCAPE
 import org.openrndr.application
 import org.openrndr.color.ColorRGBa
 import org.openrndr.extensions.Screenshots
-import org.openrndr.extra.gui.GUI
-import org.openrndr.extra.parameters.ColorParameter
-import org.openrndr.extra.parameters.DoubleParameter
-import org.openrndr.extra.parameters.IntParameter
-import org.openrndr.extra.parameters.OptionParameter
+import org.openrndr.ffmpeg.ScreenRecorder
+import org.openrndr.panel.ControlManager
+import org.openrndr.panel.elements.*
+import org.openrndr.panel.layout
+import org.openrndr.panel.style.*
+import org.openrndr.panel.styleSheet
 import kotlin.math.*
 
-
-
+// ============================================
+// SETTINGS (shared, non-visual)
+// ============================================
+class Settings {
+    var angularSpeed: Double = 45.0
+    val backGroundColor: ColorRGBa = ColorRGBa.fromHex("000003")
+}
 
 // ============================================
 // MAIN APPLICATION
 // ============================================
 fun main() = application {
     configure {
-//        width = 1080 / 2
-//        height = 1920 / 2
-        fullscreen = Fullscreen.CURRENT_DISPLAY_MODE
+        width = 1080 / 2
+        height = 1920 / 2
+        windowResizable = true
+//        fullscreen = Fullscreen.CURRENT_DISPLAY_MODE
 //        display = displays[1]
         hideCursor = false
     }
 
     program {
-        // GUI
-        val gui = GUI()
+        val settings = Settings()
+        ColorConfig.mode = ColorMode.SINGLE
 
-        val settings = object {
-            @DoubleParameter("Angular Speed", 5.0, 90.0)
-            var angularSpeed: Double = 45.0
-
-            @ColorParameter("background")
-            var backGroundColor = ColorRGBa.fromHex("000003")
-
-            @OptionParameter("Color Mode")
-            var colorMode = ColorMode.SINGLE
-        }
-
+        // Visuals: add new ones here, the panel picks them up automatically
         val fishVisual = FishFieldVisual().apply { enabled = true }
         val displacementVisual = DisplacementGridVisual()
         val waveVisual = WaveRippleVisual()
-        val visuals = listOf(fishVisual, displacementVisual, waveVisual)
+        val hypotWaves = HypotWaves()
+        val visuals = listOf(fishVisual, displacementVisual, waveVisual, hypotWaves)
 
-        gui.add(settings, "Settings")
-        gui.add(fishVisual, "Fish Field")
-        gui.add(displacementVisual, "Displacement Grid")
-        gui.add(waveVisual, "Wave Ripple")
+        var isVisible = true
+        var lastClickTime = 0.0
+        val doubleClickThreshold = 0.25
+        val cmGui = ControlManager().apply {
+            styleSheet(has type "dropdown-button") {
+                background = Color.RGBa(ColorRGBa.PINK)
+                color = Color.RGBa(ColorRGBa.BLACK)
+                width = 200.px
+            }
 
-        extend(gui)
+            styleSheet(has type "slider") {
+                color = Color.RGBa(ColorRGBa.PINK)
+                width = 200.px
+            }
+
+            // Position the root layout container to the left side
+            styleSheet(has type "x-root") {
+                position = Position.ABSOLUTE
+                left = 20.px
+                top = 20.px
+            }
+
+            layout {
+                // Global controls
+                doubleControl("Angular speed", 5.0, 90.0, settings::angularSpeed, 0)
+
+                dropdownButton {
+                    label = "Color"
+                    ColorMode.entries.forEach { mode ->
+                        val entry = item {
+                            label = mode.name
+                            events.picked.listen {
+                                ColorConfig.mode = mode
+                            }
+                        }
+                        if (mode == ColorConfig.mode) value = entry
+                    }
+                }
+
+                // One toggle + its own controls per visual
+                visuals.forEach { it.buildPanel(this) }
+            }
+        }
+
+        extend(cmGui)
+        // Track double-clicks using buttonUp events
+        mouse.buttonUp.listen {
+            val currentTime = seconds
+            if (currentTime - lastClickTime < doubleClickThreshold) {
+                isVisible = !isVisible
+                cmGui.enabled = isVisible
+            }
+            lastClickTime = currentTime
+        }
 
 //        val settings = object {
 //            @IntParameter("Number of Fish", 1, 10)
@@ -84,7 +131,6 @@ fun main() = application {
         val playlistPlayer = PlaylistPlayer()
         playlistPlayer.loadDirectory("data/audio/")
 
-
         var t = 0.0
 
         keyboard.keyDown.listen { event ->
@@ -102,21 +148,18 @@ fun main() = application {
             }
         }
 
-        // TODO
-//        extend(ScreenRecorder()) {
-//            maximumDuration = 26.0 // stops recording after 26 seconds
-//            frameRate = 60.0
-//            multisample = BufferMultisample.SampleCount(8) // Anti-alias sharp vector lines
-//            h264 {
-//                constantRateFactor = 10
-//            }
-//        }
+        record() //
         extend(Screenshots()) {
             key = "s"
         }
+
+        // Clean Up (registered once, not every frame)
+        ended.listen {
+            playlistPlayer.stop()
+        }
+
         extend {
             playlistPlayer.update()
-            ColorConfig.mode = settings.colorMode
 
             val cx = width / 2.0
             val cy = height / 2.0
@@ -175,12 +218,6 @@ fun main() = application {
 //                    point(x, yCoord)
 //                }
 //            }
-
-            // Clean Up
-            ended.listen {
-                playlistPlayer.stop()
-            }
         }
     }
 }
-

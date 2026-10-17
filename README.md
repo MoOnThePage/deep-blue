@@ -27,7 +27,7 @@ Features
   - mp3 (Tested)
   - wav (Not tested)
   - ogg (not tested)
-- GUI for Control
+- gui for Control
 - Change music between next and previous tracks
 
 Installation
