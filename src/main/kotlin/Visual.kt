@@ -162,3 +162,52 @@ class HypotWaves : Visual("Hypo tWaves") {
         }
     }
 }
+
+class HelixBloom : Visual("Helix Bloom") {
+
+    // 1. add a plain `var` for every knob you want tunable
+    var pointCount = 20000
+    var alpha = 36.0          // per-point opacity, 0..255 (sketch used 96 at 20k points)
+    var speed = PI / 45 * 60  // sketch advanced t by PI/45 per frame at 60 fps
+    var baseRadius = 79.0     // the `79` in q
+    var stretch = 40.0        // the `+ 40` that elongates the y radius
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+        doubleControl("Alpha", 1.0, 255.0, ::alpha)
+        doubleControl("Speed", 0.0, 10.0, ::speed)
+        doubleControl("Base radius", 20.0, 150.0, ::baseRadius)
+        doubleControl("Y stretch", 0.0, 120.0, ::stretch)
+    }
+
+    override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
+        val time = t * speed
+
+        drawer.points {
+            for (i in pointCount - 1 downTo 0) {
+                // Sketch used y = i/99 over 20000 points (y in 0..~202).
+                // Normalizing keeps the same shape at any point count;
+                // more points just means a denser figure.
+                val y = i.toDouble() / pointCount * (20000.0 / 99.0)
+
+                // default-params from the original, in order
+                val k = 8 * cos(y)
+                val e = y / 8 - 12
+                val d = hypot(k, e).pow(3) / 999 + 1
+
+                val q = baseRadius - e * sin(k) +
+                        k / d * (8 + 4 * sin(d * d - time + cos(e + time / 2)))
+
+                val c = d / 2 + e / 99 * sin(time + d) - time / 8 + (i % 2) * 3
+
+                // 200 was the sketch's canvas center x -> cx
+                // 190 was center y (200) minus 10 -> cy - 10
+                val px = q * sin(c) + cx
+                val py = (q + stretch) * cos(c) + cy - 10.0
+
+                fill = ColorRGBa(1.0, 1.0, 1.0, alpha / 255.0)
+                point(px, py)
+            }
+        }
+    }
+}

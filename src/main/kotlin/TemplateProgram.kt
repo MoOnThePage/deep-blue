@@ -43,7 +43,8 @@ fun main() = application {
         val displacementVisual = DisplacementGridVisual()
         val waveVisual = WaveRippleVisual()
         val hypotWaves = HypotWaves()
-        val visuals = listOf(fishVisual, displacementVisual, waveVisual, hypotWaves)
+        val helixBloom = HelixBloom()
+        val visuals = listOf(fishVisual, displacementVisual, waveVisual, hypotWaves, helixBloom)
 
         var isVisible = true
         var lastClickTime = 0.0
