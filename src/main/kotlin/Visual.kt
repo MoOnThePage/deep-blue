@@ -211,3 +211,57 @@ class HelixBloom : Visual("Helix Bloom") {
         }
     }
 }
+
+class SilkLoom : Visual("Silk Loom") {
+    var pointCount = 30000
+    var speed = PI / 30 * 60   // sketch advanced t by PI/30 per frame at 60 fps
+    var baseAlpha = 36.0       // the `36` in stroke(w, 36 + ...)
+    var flicker = 3.0          // the `3` in 3/cos(t+e), the pulsing opacity
+    var spread = 30.0          // the `30` that swings the strands sideways
+    var height = 79.0          // the `79` that scales d into the vertical extent
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+        doubleControl("Speed", 0.0, 10.0, ::speed)
+        doubleControl("Alpha", 1.0, 120.0, ::baseAlpha)
+        doubleControl("Flicker", 0.0, 20.0, ::flicker)
+        doubleControl("Spread", 0.0, 80.0, ::spread)
+        doubleControl("Height", 20.0, 150.0, ::height)
+    }
+
+    override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
+        val time = t * speed
+
+        drawer.points {
+            for (i in pointCount - 1 downTo 0) {
+                // The sketch used i = 0..29999 directly. Rescale so the shape
+                // stays the same at any point count (more points = denser).
+                val s = i.toDouble() * (30000.0 / pointCount)
+
+                // default-params from the original, in order
+                val k = 5 * cos(s / 49) * cos(s / 3690)
+                val e = s / 984 - 12
+                val d = (k * k + e * e) / 99 + 1   // mag(k, e)**2 = k² + e²
+
+                // i % 3 uses the real integer index so the 3 interleaved
+                // strands are preserved
+                val m = (i % 3).toDouble()
+
+                // c is assigned inside the x expression in the sketch,
+                // and reused by y
+                val c = d - time / 18 + m * 4
+
+                val px = k * (4 + sin(d * 18 - time * 2 + m * 2)) -
+                        5 * sin(atan2(k, e) * 9) +
+                        spread * sin(c) + cx - 200.0   // +200 -> + cx - 200.0
+                val py = 80 * sin(c - d) + d * height + cy - 200.0
+
+                // stroke(w, 36 + 3/cos(t+e)): white, alpha can spike near
+                // cos = 0, so clamp to 0..255 like p5 does
+                val a = (baseAlpha + flicker / cos(time + e)).coerceIn(0.0, 255.0)
+                fill = ColorRGBa(1.0, 1.0, 1.0, a / 255.0)
+                point(px, py)
+            }
+        }
+    }
+}
