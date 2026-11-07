@@ -59,7 +59,8 @@ fun main() = application {
         val hypotWaves = HypotWaves()
         val helixBloom = HelixBloom()
         val silkLoom = SilkLoom()
-        val visuals = listOf(fishVisual, displacementVisual, waveVisual, hypotWaves, helixBloom, silkLoom)
+        val driftOrchid = DriftOrchid()
+        val visuals = listOf(fishVisual, displacementVisual, waveVisual, hypotWaves, helixBloom, silkLoom, driftOrchid)
 
         // One Placement per visual (position + scale)
         val placements = visuals.associateWith { Placement() }

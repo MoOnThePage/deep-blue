@@ -265,3 +265,53 @@ class SilkLoom : Visual("Silk Loom") {
         }
     }
 }
+
+class DriftOrchid : Visual("Drift Orchid") {
+    var pointCount = 10000
+    var speed = PI / 120 * 60  // sketch advanced t by PI/120 per frame at 60 fps
+    var alpha = 96.0           // the `96` in stroke(w, 96)
+    var ring = 60.0            // the `60` in 60*cos(c), the sideways swing
+    var depth = 29.0           // the `29` that scales d into the vertical extent
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+        doubleControl("Speed", 0.0, 10.0, ::speed)
+        doubleControl("Alpha", 1.0, 255.0, ::alpha)
+        doubleControl("Ring", 0.0, 150.0, ::ring)
+        doubleControl("Depth", 5.0, 60.0, ::depth)
+    }
+
+    override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
+        val time = t * speed
+
+        drawer.points {
+            for (i in pointCount - 1 downTo 0) {
+                // The sketch used y = i/345 over 10000 points (y in 0..~29).
+                // Rescale so the shape stays the same at any point count.
+                val y = i.toDouble() * (10000.0 / pointCount) / 345.0
+
+                // JS `y^8` is a bitwise XOR on the integer part of y, not a power
+                val yXor = (y.toInt() xor 8).toDouble()
+
+                // default-params from the original, in order.
+                // cos(i - t/4) uses the real integer index: it acts as a
+                // per-point pseudo-random phase, which spreads the points out.
+                val base = if (y < 11) 6 + sin(yXor) * 6 else y / 5 + cos(y / 2)
+                val k = base * cos(i - time / 4)
+                val e = y / 7 - 13
+                val d = hypot(k, e) + sin(e / 4 + time) / 2
+
+                // q = radial distance; c = angle, assigned inside the x
+                // expression in the sketch and reused by y
+                val q = y * k / d * (3 + sin(d * 2 + y / 2 - time * 4))
+                val c = d / 2 + 1 - time / 2
+
+                val px = q + ring * cos(c) + cx - 200.0        // +200 -> + cx - 200.0
+                val py = q * sin(c) + d * depth - 170.0 + cy - 200.0
+
+                fill = ColorRGBa(1.0, 1.0, 1.0, alpha / 255.0)
+                point(px, py)
+            }
+        }
+    }
+}
