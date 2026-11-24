@@ -3,10 +3,9 @@ import org.openrndr.draw.BufferMultisample
 import org.openrndr.ffmpeg.ScreenRecorder
 import org.openrndr.ffmpeg.h264
 
-
-fun Program.record(duration: Double = 26.0) {
+fun Program.record(duration: Double = 60.0) {
     extend(ScreenRecorder()) {
-        maximumDuration = duration // stops recording after 26 seconds
+        maximumDuration = duration // stops recording after 60 seconds
         frameRate = 60.0
         multisample = BufferMultisample.SampleCount(8) // Anti-alias sharp vector lines
         h264 {

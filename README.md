@@ -64,8 +64,5 @@ Project Development Road MAP
 - Add control for changing the background color
 - Add control for controlling the visuals
 
-> **Note:** The repository has three tracks from [pixabay](https://pixabay.com/) intended for testing purposes, 
-> not for distribution or sharing. This will change in the future.
-> - [Underwater Dreamscape](https://pixabay.com/music/ambient-underwater-dreamscape-537486/)
-> - [Nostalgia](https://pixabay.com/music/nostalgia-nostalgia-591320/)
-> - [Intro](https://pixabay.com/music/beats-intro-591323/)
+> **Note:** 
+> Music by <a href="https://pixabay.com/users/purrplecat-41559583/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=625210">Purrple Cat</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=625210">Pixabay</a>

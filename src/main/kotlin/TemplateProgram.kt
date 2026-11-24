@@ -3,9 +3,12 @@ import gui.doubleControl
 import org.openrndr.KEY_ESCAPE
 import org.openrndr.application
 import org.openrndr.color.ColorRGBa
+import org.openrndr.draw.BufferMultisample
 import org.openrndr.draw.Drawer
 import org.openrndr.draw.isolated
 import org.openrndr.extensions.Screenshots
+import org.openrndr.ffmpeg.ScreenRecorder
+import org.openrndr.ffmpeg.h264
 import org.openrndr.math.Vector2
 import org.openrndr.panel.ControlManager
 import org.openrndr.panel.elements.*
@@ -60,7 +63,25 @@ fun main() = application {
         val helixBloom = HelixBloom()
         val silkLoom = SilkLoom()
         val driftOrchid = DriftOrchid()
-        val visuals = listOf(fishVisual, displacementVisual, waveVisual, hypotWaves, helixBloom, silkLoom, driftOrchid)
+        val moireBloom = MoireBloom()
+        val tidalLantern = TidalLantern()
+        val neonCurtain = NeonCurtain()
+        val swayingVeil = SwayingVeil()
+        val neonThistle = NeonThistle()
+        val visuals = listOf(
+            fishVisual,
+            displacementVisual,
+            waveVisual,
+            hypotWaves,
+            helixBloom,
+            silkLoom,
+            driftOrchid,
+            moireBloom,
+            tidalLantern,
+            neonCurtain,
+            swayingVeil,
+            neonThistle
+        )
 
         // One Placement per visual (position + scale)
         val placements = visuals.associateWith { Placement() }
@@ -96,6 +117,17 @@ fun main() = application {
         var moved = false                    // did the pointer move past the threshold during this press?
         var grabOffset = Vector2.ZERO        // (visual anchor - pointer) at grab time, keeps the drag jump-free
         var lastTapTime = -10.0              // time of the previous tap, for double-tap detection
+
+        // Screen Recorder instance
+        var screenRecorder = ScreenRecorder().apply {
+            maximumDuration = 60.0
+            frameRate = 60.0
+            multisample = BufferMultisample.SampleCount(8)
+            h264 {
+                constantRateFactor = 10
+            }
+            enabled = false
+        }
 
         val doubleTapTime = 0.3              // max seconds between two taps to count as a double tap
         val dragThreshold = 8.0              // pixels of movement before a press becomes a drag
@@ -183,6 +215,27 @@ fun main() = application {
                     }
                 }
 
+                // Recording Video
+                dropdownButton {
+                    label = "Recording"
+                    listOf(10.0, 15.0, 30.0, 60.0).forEach { duration ->
+                        item {
+                            label = "Record ${duration.toInt()} seconds"
+                            events.picked.listen {
+                                screenRecorder.enabled = false
+                                screenRecorder.maximumDuration = duration
+                                screenRecorder.enabled = true
+                            }
+                        }
+                    }
+                    item {
+                        label = "Stop recording"
+                        events.picked.listen {
+                            screenRecorder.enabled = false
+                        }
+                    }
+                }
+
                 // Visual selector. Choosing an entry only changes WHICH visual's options are shown.
                 // It does NOT enable the visual. Dragging a visual on screen selects it too.
                 visualDropdown = dropdownButton {
@@ -213,6 +266,7 @@ fun main() = application {
         }
 
         extend(cmGui)
+        extend(screenRecorder)
 
         // ----------------------------------------
         // Mouse + touch input
@@ -276,6 +330,7 @@ fun main() = application {
                 KEY_ESCAPE -> {
                     application.exit()
                 }
+
                 else -> {
                     when (event.name) {
                         // Audio controls
@@ -286,7 +341,7 @@ fun main() = application {
             }
         }
 
-//        record(60.0)
+
         extend(Screenshots()) {
             key = "s"
         }

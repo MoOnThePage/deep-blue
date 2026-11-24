@@ -6,6 +6,8 @@ import org.openrndr.draw.Drawer
 import org.openrndr.panel.elements.Element
 import org.openrndr.panel.elements.div
 import kotlin.math.*
+import org.openrndr.color.mix
+import org.openrndr.draw.BlendMode
 
 abstract class Visual(val name: String) {
     var enabled: Boolean = false
@@ -129,7 +131,7 @@ class WaveRippleVisual : Visual("Wave Ripple") {
     }
 }
 
-class HypotWaves : Visual("Hypo tWaves") {
+class HypotWaves : Visual("Hypot Waves") {
 
     // 1. add a plain `var` for every knob you want tunable
     var pointCount = 10000
@@ -315,3 +317,351 @@ class DriftOrchid : Visual("Drift Orchid") {
         }
     }
 }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ---------------------------------------------------------------------------
+// SHARED PALETTE (E4312B red, 149954 green, FFFFFF white; black comes from the host)
+// White sits in the middle on purpose: green -> red directly would turn brown.
+// ---------------------------------------------------------------------------
+private val RED = ColorRGBa.fromHex("E4312B")
+private val GREEN = ColorRGBa.fromHex("149954")
+private val WHITE = ColorRGBa.fromHex("FFFFFF")
+
+/** Maps v in 0..1 onto green -> white -> red. */
+private fun palette(v: Double): ColorRGBa {
+    val x = v.coerceIn(0.0, 1.0)
+    return if (x < 0.5) mix(GREEN, WHITE, x * 2.0)
+    else mix(WHITE, RED, (x - 0.5) * 2.0)
+}
+
+// ===========================================================================
+// 1. MOIRE BLOOM  (grid x 100..299, y 99..299 step 2 -> about 200 x 101 points)
+// ===========================================================================
+class MoireBloom : Visual("Moire Bloom") {
+    var pointCount = 20200
+    var speed = PI / 90 * 60   // sketch advanced t by PI/90 per frame at 60 fps
+    var alpha = 96.0           // the `96` in stroke(255, 96)
+    var ripples = 9.0          // the `9` in sin(d*9): ripple bands per ring
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+        doubleControl("Speed", 0.0, 10.0, ::speed)
+        doubleControl("Alpha", 1.0, 255.0, ::alpha)
+        doubleControl("Ripples", 1.0, 20.0, ::ripples)
+    }
+
+    override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
+        val time = t * speed
+
+        // Additive blending: overlapping translucent points add light -> neon glow
+        val oldBlend = drawer.drawStyle.blendMode
+        drawer.drawStyle.blendMode = BlendMode.ADD
+
+        // The grid is twice as dense in x as in y (like the sketch's step of 2),
+        // so cols = sqrt(2 * count) and rows = count / cols.
+        val cols = sqrt(pointCount * 2.0).toInt().coerceAtLeast(2)
+        val rows = (pointCount / cols).coerceAtLeast(2)
+
+        drawer.points {
+            for (i in pointCount - 1 downTo 0) {
+                // Split the single index into a column and a row of the grid,
+                // then map them onto the sketch's x = 100..299, y = 99..299
+                val x = 100.0 + (i % cols) * (199.0 / (cols - 1))
+                val y = 99.0 + (i / cols) * (200.0 / (rows - 1))
+
+                // default-params from the original, in order.
+                // k, e: grid re-centered around 0 (roughly -12.5..+12.5)
+                val k = x / 8 - 25
+                val e = y / 8 - 25
+
+                // o: distance from the center, divided by a "breathing" denominator.
+                // The k*e term warps the rings into a saddle; `- time` animates them.
+                val o = hypot(k, e) / (4 + sin(k * e / 49 - time))
+
+                // d: cosine of the warped distance -> concentric bands in -1..1
+                val d = cos(o)
+
+                // q: horizontal radius. k/cos(e) explodes near cos(e)=0, which makes
+                // the long streaks (this is in the original). sin(d*ripples) carves
+                // ripple bands; x/3 adds a base radius that grows with x.
+                val q = k / cos(e) * sin(d * ripples) + x / 3
+
+                // c: angle. Each ring rotates differently; time/8 spins the whole picture
+                val c = o + time / 8
+
+                // Polar -> Cartesian. The y radius (y/2+q)/2 squashes it into an ellipse.
+                val px = q * cos(c) + cx - 200.0              // +200 -> + cx - 200.0
+                val py = (y / 2 + q) / 2 * sin(c) + cy - 200.0
+
+                // d (-1..1) -> 0..1 -> palette
+                fill = palette((d + 1) / 2).opacify(alpha / 255.0)
+                point(px, py)
+            }
+        }
+
+        drawer.drawStyle.blendMode = oldBlend
+    }
+}
+
+// ===========================================================================
+// 2. TIDAL LANTERN  (grid x 100..299, y 99..299 step 2)
+// ===========================================================================
+class TidalLantern : Visual("Tidal Lantern") {
+    var pointCount = 20200
+    var speed = PI / 60 * 60   // sketch advanced t by PI/60 per frame at 60 fps
+    var alpha = 96.0           // the `96` in stroke(255, 96)
+    var ripples = 9.0          // the `9` in cos(d*9): ripple bands per ring
+    var swell = 5.0            // the `5` in d = 5*cos(o): strength of the radial swell
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+        doubleControl("Speed", 0.0, 10.0, ::speed)
+        doubleControl("Alpha", 1.0, 255.0, ::alpha)
+        doubleControl("Ripples", 1.0, 20.0, ::ripples)
+        doubleControl("Swell", 1.0, 10.0, ::swell)
+    }
+
+    override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
+        val time = t * speed
+
+        val oldBlend = drawer.drawStyle.blendMode
+        drawer.drawStyle.blendMode = BlendMode.ADD
+
+        // Twice as dense in x as in y, as in the sketch
+        val cols = sqrt(pointCount * 2.0).toInt().coerceAtLeast(2)
+        val rows = (pointCount / cols).coerceAtLeast(2)
+
+        drawer.points {
+            for (i in pointCount - 1 downTo 0) {
+                val x = 100.0 + (i % cols) * (199.0 / (cols - 1))   // 100..299
+                val y = 99.0 + (i / cols) * (200.0 / (rows - 1))    // 99..299
+
+                // default-params from the original, in order.
+                // k, e: grid re-centered around 0 (roughly -12.5..+12.5)
+                val k = x / 8 - 25
+                val e = y / 8 - 25
+
+                // o: distance from the center, slowed by /3.5. Constant on circles.
+                val o = hypot(k, e) / 3.5
+
+                // d: cosine of the distance scaled to -swell..+swell; drives the rings
+                val d = swell * cos(o)
+
+                // c: angle, assigned inside the x expression in the sketch and reused by y.
+                // (d+o)/4 rotates each ring differently; -time/8 spins the picture.
+                val c = (d + o) / 4 - time / 8
+
+                // x radius: atan(3*cos(...)) is a squashed wave (about -1.25..+1.25)
+                // that snaps between two levels, so the ripples look like sharp bands.
+                // Times k it grows toward the left/right edges; x/2 is the base radius.
+                val rx = k * atan(3 * cos(d * ripples)) + x / 2
+
+                // y radius: the only place time enters the radius, so the rings "breathe"
+                val ry = k * d * cos(o - d + time) + y / 2
+
+                val px = rx * cos(c) + cx - 200.0   // +200 -> + cx - 200.0
+                val py = ry * sin(c) + cy - 200.0
+
+                // d (-swell..+swell) -> 0..1 -> palette
+                fill = palette((d / swell + 1) / 2).opacify(alpha / 255.0)
+                point(px, py)
+            }
+        }
+
+        drawer.drawStyle.blendMode = oldBlend
+    }
+}
+
+// ===========================================================================
+// 3. NEON CURTAIN  (grid x 100..299, y 100..299 step 1 -> 200 x 200)
+// ===========================================================================
+class NeonCurtain : Visual("Neon Curtain") {
+    var pointCount = 40000
+    var speed = PI / 120 * 60  // sketch advanced t by PI/120 per frame at 60 fps
+    var alpha = 66.0           // the `66` in stroke(255, 66)
+    var swell = 5.0            // the `5` in d = 5*cos(...): strength of the ring swell
+    var ripples = 9.0          // the `9` in atan(9*cos(...)): sharpness of the row waves
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+        doubleControl("Speed", 0.0, 10.0, ::speed)
+        doubleControl("Alpha", 1.0, 255.0, ::alpha)
+        doubleControl("Swell", 1.0, 10.0, ::swell)
+        doubleControl("Ripples", 1.0, 30.0, ::ripples)
+    }
+
+    override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
+        val time = t * speed
+
+        val oldBlend = drawer.drawStyle.blendMode
+        drawer.drawStyle.blendMode = BlendMode.ADD
+
+        // Square grid: n x n points
+        val n = sqrt(pointCount.toDouble()).toInt().coerceAtLeast(2)
+
+        drawer.points {
+            for (i in pointCount - 1 downTo 0) {
+                val x = 100.0 + (i % n) * (199.0 / (n - 1))   // 100..299
+                val y = 100.0 + (i / n) * (199.0 / (n - 1))   // 100..299
+
+                // default-params from the original, in order.
+                val k = x / 8 - 25
+                val e = y / 8 - 25
+
+                // d: cosine of the distance from the center, scaled to -swell..+swell
+                val d = swell * cos(hypot(k, e) / 3)
+
+                // Row wave: depends only on e (the row), so all points in a row share it.
+                // That is what creates the horizontal banding. atan makes it snap.
+                val rowWave = atan(ripples * cos(e * 2 - time / 2))
+
+                // Sideways push, scaled by k so the middle is calm and the edges swing
+                val push = (d * k + k * 2 * rowWave) * sin(d * 2.5 - time)
+
+                // /2 averages the grid x with the pushed x; +100 -> + cx - 200.0 + 100.0
+                val px = (x + push) / 2 + cx - 100.0
+
+                // Every term is built from d, so rings share a height pattern:
+                // d*13 base height, a traveling ripple, and d*e which slants it by row
+                val py = d * 13 + d * 3 * (3 + cos(d * 3 - time)) + d * e + cy   // +200 -> + cy
+
+                fill = palette((d / swell + 1) / 2).opacify(alpha / 255.0)
+                point(px, py)
+            }
+        }
+
+        drawer.drawStyle.blendMode = oldBlend
+    }
+}
+
+// ===========================================================================
+// 4. SWAYING VEIL  (grid x 100..299, y 100..299 step 1 -> 200 x 200)
+// ===========================================================================
+class SwayingVeil : Visual("Swaying Veil") {
+    var pointCount = 40000
+    var speed = PI / 60 * 60   // sketch advanced t by PI/60 per frame at 60 fps
+    var alpha = 66.0           // the `66` in stroke(255, 66)
+    var swell = 5.0            // the `5` in d = 5*cos(...): strength of the ring swell
+    var sway = 0.5             // the `1/2` in k/2*sin(y/3+t): side-to-side wave strength
+    var flutter = 5.0          // the `5` in (d-2)*5*abs(cos(...)): vertical flutter
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+        doubleControl("Speed", 0.0, 10.0, ::speed)
+        doubleControl("Alpha", 1.0, 255.0, ::alpha)
+        doubleControl("Swell", 1.0, 10.0, ::swell)
+        doubleControl("Sway", 0.0, 2.0, ::sway)
+        doubleControl("Flutter", 0.0, 15.0, ::flutter)
+    }
+
+    override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
+        val time = t * speed
+
+        val oldBlend = drawer.drawStyle.blendMode
+        drawer.drawStyle.blendMode = BlendMode.ADD
+
+        // Square grid: n x n points
+        val n = sqrt(pointCount.toDouble()).toInt().coerceAtLeast(2)
+
+        drawer.points {
+            for (i in pointCount - 1 downTo 0) {
+                val x = 100.0 + (i % n) * (199.0 / (n - 1))   // 100..299
+                val y = 100.0 + (i / n) * (199.0 / (n - 1))   // 100..299
+
+                // default-params from the original, in order.
+                val k = x / 8 - 25
+                val e = y / 8 - 25
+
+                // d: cosine of the distance from the center, scaled to -swell..+swell
+                val d = swell * cos(hypot(k, e) / 3)
+
+                // Two sideways pushes: a ring-based one (depends on d) and a row-based
+                // one (depends on y only), so each row sways at its own phase like a flag
+                val push = d * k * sin(d * 2.5 - time) + k * sway * sin(y / 3 + time)
+
+                // /2 averages grid x and pushed x; +100 -> + cx - 200.0 + 100.0
+                val px = (x + push) / 2 + cx - 100.0
+
+                // d*19 base height; abs(cos) folds the wave so it bounces instead of
+                // swinging; (d-2) shifts which rings flutter up or down; d*e slants by row.
+                // +215 -> + cy - 200.0 + 215.0 = + cy + 15.0
+                val py = d * 19 + (d - 2) * flutter * abs(cos(d / 2 - time / 2)) +
+                        d * e + cy + 15.0
+
+                fill = palette((d / swell + 1) / 2).opacify(alpha / 255.0)
+                point(px, py)
+            }
+        }
+
+        drawer.drawStyle.blendMode = oldBlend
+    }
+}
+
+// ===========================================================================
+// 5. NEON THISTLE  (one path: x = i, y = i/41, 10000 points)
+// ===========================================================================
+class NeonThistle : Visual("Neon Thistle") {
+    var pointCount = 10000
+    var speed = PI / 240 * 60  // sketch advanced t by PI/240 per frame at 60 fps
+    var alpha = 36.0           // the `36` in stroke(w, 36)
+    var petals = 9.0           // the `9` in sin(atan2(k, e)*9): angular lobes
+    var spin = 50.0            // the `50` in 50*cos(c): radius of the circular swing
+    var lift = 45.0            // the `45` that scales d into vertical position
+
+    override fun Element.controls() {
+        intControl("Points", 1000, 50000, ::pointCount)
+        doubleControl("Speed", 0.0, 10.0, ::speed)
+        doubleControl("Alpha", 1.0, 255.0, ::alpha)
+        doubleControl("Petals", 1.0, 20.0, ::petals)
+        doubleControl("Spin", 0.0, 120.0, ::spin)
+        doubleControl("Lift", 10.0, 90.0, ::lift)
+    }
+
+    override fun draw(drawer: Drawer, t: Double, cx: Double, cy: Double) {
+        val time = t * speed
+
+        val oldBlend = drawer.drawStyle.blendMode
+        drawer.drawStyle.blendMode = BlendMode.ADD
+
+        drawer.points {
+            for (i in pointCount - 1 downTo 0) {
+                // The sketch calls a(i, i/41): ONE parameter walking along a line.
+                // Rescale so the shape stays the same at any point count.
+                val x = i.toDouble() * (10000.0 / pointCount)   // 0..9999
+                val y = x / 41                                  // 0..~244
+
+                // default-params from the original, in order.
+                // k: fast wave times slow wave -> swells and shrinks along the path
+                val k = 5 * cos(x / 19) * cos(y / 30)
+                val e = y / 8 - 12
+
+                // d: squared distance of (k, e) from the origin (mag**2 = k*k + e*e),
+                // scaled down, +2. Acts as the "depth" of each point (about 2..9).
+                val d = (k * k + e * e) / 59 + 2
+
+                // q: radius with three layers: a 9-lobed flower from atan2, a slow wave
+                // along d, and a sideways stretch k/d that shrinks with depth (fake
+                // perspective) and shimmers via the fast sin(... - 16t)
+                val q = 4 * sin(atan2(k, e) * petals) +
+                        9 * sin(d - time) -
+                        k / d * (9 + sin(d * 9 - time * 16) * 3)
+
+                // c: angle, assigned inside the x expression and reused by y.
+                // d*d/7 twists each depth level differently.
+                val c = d * d / 7 - time
+
+                val px = q + spin * cos(c) + cx              // +200 -> + cx - 200.0 + 200.0
+                val py = q * sin(c) + d * lift + cy - 209.0  // -9 -> + cy - 200.0 - 9.0
+
+                // depth d (2..9) -> 0..1 -> palette: shallow = green, deep = red
+                fill = palette((d - 2) / 7).opacify(alpha / 255.0)
+                point(px, py)
+            }
+        }
+
+        drawer.drawStyle.blendMode = oldBlend
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
